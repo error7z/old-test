@@ -204,44 +204,84 @@
         }
 
         function assemblePayloadString() {
-            const chaos = generateChaos();
-            const plain = document.getElementById('plain-body').value;
-            let html = document.getElementById('s-body').value;
-            const btnUrl = document.getElementById('btn-url').value;
-            const btnText = document.getElementById('btn-text').value;
+    const plain = document.getElementById('plain-body').value;
+    let htmlContent = document.getElementById('s-body').value;
+    const btnUrl = document.getElementById('btn-url').value;
+    const btnText = document.getElementById('btn-text').value;
 
-            const mutationClass = `p7m-${Math.random().toString(36).substring(2, 7)}`;
-            const stealthStyle = `<style>.${mutationClass} { display:none !important; visibility:hidden; opacity:0; font-size:0; height:0; }</style>`;
-            const noisyBtnText = btnText.split('').map(char => char + chaos.zws()).join('');
+    // 1. EXTENDED HIGH-REPUTATION FONT REPOSITORY (50+ STACKS)
+    const fontMatrix = [
+        'Arial, sans-serif', 'Verdana, sans-serif', 'Tahoma, sans-serif', 'Trebuchet MS, sans-serif', 'Times New Roman, serif',
+        'Georgia, serif', 'Garamond, serif', 'Courier New, monospace', 'Palatino, serif', 'Bookman, serif',
+        'Comic Sans MS, cursive', 'Impact, charcoal, sans-serif', 'Lucida Sans Unicode, sans-serif', 'Geneva, sans-serif', 'Arial Black, sans-serif',
+        'Helvetica, sans-serif', 'Calibri, sans-serif', 'Candara, sans-serif', 'Optima, sans-serif', 'Segoe UI, sans-serif',
+        'Century Gothic, sans-serif', 'Franklin Gothic Medium, sans-serif', 'Futura, sans-serif', 'Gill Sans, sans-serif', 'Baskerville, serif',
+        'Big Caslon, serif', 'Bodoni MT, serif', 'Cambria, serif', 'Constantia, serif', 'Didot, serif',
+        'Rockwell, serif', 'Andale Mono, monospace', 'Consolas, monospace', 'Monaco, monospace', 'Copperplate, serif',
+        'Papyrus, sans-serif', 'Brush Script MT, cursive', 'Avenir, sans-serif', 'Corbel, sans-serif', 'Dauphin, sans-serif',
+        'Hoefler Text, serif', 'Myriad Pro, sans-serif', 'Open Sans, sans-serif', 'Roboto, sans-serif', 'Lato, sans-serif',
+        'Montserrat, sans-serif', 'Oswald, sans-serif', 'Source Sans Pro, sans-serif', 'Slabo 27px, serif', 'Raleway, sans-serif',
+        'PT Sans, sans-serif', 'Merriweather, serif', 'Noto Sans, sans-serif', 'Playfair Display, serif', 'Muli, sans-serif'
+    ];
 
-            let buttonHtml = "";
-            if(btnUrl && btnText) {
-                buttonHtml = `
-                <div style="text-align:center; margin:${Math.floor(Math.random()*10 + 15)}px 0;">
-                    <a href="${btnUrl}" style="background-color:#3b82f6; color:#ffffff; padding:12px 25px; text-decoration:none; border-radius:5px; font-family:${chaos.font}; font-size:${document.getElementById('btn-size').value}; font-weight:bold; display:inline-block;">
-                        ${noisyBtnText}
-                    </a>
-                </div>`;
-            }
-
-            let ghostBody = `<div class="${mutationClass}">${Math.random().toString(36).repeat(5)}</div>`;
-            let finalBody = `${stealthStyle}${ghostBody}<div style="font-family:${chaos.font}; font-size:${chaos.size}; font-weight:${chaos.weight}; letter-spacing:${chaos.spacing}; line-height:${chaos.lineHeight}; color:#1a1a1a; max-width:600px; margin:auto;">`;
-
-            if(plain) {
-                const noisyPlain = plain.split('').map(char => char + chaos.zws()).join('');
-                finalBody += `<div style="margin-bottom:15px;">${noisyPlain}</div><hr style="border:0; border-top:1px solid #f0f0f0;">`;
-            }
+    // 2. WORD-LEVEL RANDOMIZATION ENGINE
+    const randomizeWords = (text) => {
+        if (!text) return "";
+        return text.split(' ').map(word => {
+            const font = fontMatrix[Math.floor(Math.random() * fontMatrix.length)];
+            const size = (13 + Math.random() * 4).toFixed(2) + 'px';
+            const weight = [300, 400, 500, 600, 700][Math.floor(Math.random() * 5)];
+            const spacing = (Math.random() * 0.3).toFixed(2) + 'px';
+            const zws = Math.random() > 0.7 ? '&#8203;' : ''; // Zero-width space injection
             
-            if(html) {
-                let processed = html.includes('{{LINK_BUTTON}}') ? html.replace('{{LINK_BUTTON}}', buttonHtml) : (html + buttonHtml);
-                finalBody += processed;
-            } else {
-                finalBody += buttonHtml;
-            }
+            return `<span style="font-family:${font}; font-size:${size}; font-weight:${weight}; letter-spacing:${spacing};">${word}${zws}</span>`;
+        }).join(' ');
+    };
 
-            finalBody += `</div>${ghostBody}`;
-            return finalBody;
+    // 3. MASSIVE NOISE GENERATOR (999x999 entropy)
+    const getNoise = () => {
+        let n = "";
+        for(let i=0; i<25; i++) {
+            n += Math.random().toString(36).substring(2, 10) + " " + Math.floor(Math.random() * 1000000) + " ";
         }
+        return n;
+    };
+
+    const stealthID = `mxt-${Math.random().toString(36).substring(2, 9)}`;
+    const stealthCSS = `<style>.${stealthID} { display:none !important; mso-hide:all !important; font-size:1px; line-height:1px; opacity:0; }</style>`;
+
+    // 4. BUTTON WITH INVISIBLE TEXT JITTER
+    let buttonHtml = "";
+    if(btnUrl && btnText) {
+        const noisyBtn = btnText.split('').map(c => c + (Math.random() > 0.8 ? '&#8203;' : '')).join('');
+        buttonHtml = `
+        <div style="text-align:center; margin:25px 0;">
+            <a href="${btnUrl}" style="background-color:#3b82f6; color:#ffffff; padding:14px 30px; text-decoration:none; border-radius:10px; font-family:${fontMatrix[0]}; font-size:16px; font-weight:bold; display:inline-block;">
+                ${noisyBtn}
+            </a>
+        </div>`;
+    }
+
+    // 5. ASSEMBLE FINAL MATRIX
+    const ghost = `<div class="${stealthID}">${getNoise()}</div>`;
+    
+    // Process content through the word-level randomizer
+    const randomizedPlain = randomizeWords(plain);
+    const randomizedHtml = htmlContent.includes('{{LINK_BUTTON}}') ? 
+        htmlContent.replace('{{LINK_BUTTON}}', buttonHtml) : 
+        (htmlContent + buttonHtml);
+
+    return `
+        ${stealthCSS}
+        ${ghost}
+        <div style="color:#1a1a1a; line-height:1.7;">
+            ${randomizedPlain ? `<div style="margin-bottom:20px;">${randomizedPlain}</div>` : ''}
+            <div style="display:block;">${randomizedHtml}</div>
+        </div>
+        ${ghost}
+    `;
+}
+
 
         async function launch() {
             if(!smtps.length || !targets.length) return alert("LOAD DATABASES BOSS");
