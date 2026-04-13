@@ -1,6 +1,29 @@
 const nodemailer = require('nodemailer');
 const { SocksProxyAgent } = require('socks-proxy-agent');
 
+// Inside your /api/send function
+if (req.body.isRefresh) {
+    try {
+        // This is where you trigger the Nodemaven rotation
+        // We ping ipify using the proxy to force a new session
+        const proxyUrl = `http://${req.body.proxy.user}:${req.body.proxy.pass}@${req.body.proxy.host}:${req.body.proxy.port}`;
+        
+        // Use a library like 'axios' or 'node-fetch' with a proxy agent
+        const response = await fetch('https://api.ipify.org?format=json', {
+            agent: new HttpsProxyAgent(proxyUrl) // Requires 'https-proxy-agent'
+        });
+        const data = await response.json();
+
+        return res.status(200).json({
+            success: true,
+            ip: data.ip
+        });
+    } catch (err) {
+        return res.status(500).json({ success: false, error: "Rotation Failed" });
+    }
+}
+
+
 // --- QUANTUM IDENTITY MATRIX (For Algorithm Evasion) ---
 const osList = [
     'Windows NT 10.0; Win64; x64', 
