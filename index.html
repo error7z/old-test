@@ -31,14 +31,13 @@
                 <h1 class="text-xl font-black tracking-tighter uppercase">P7M <span class="text-blue-500">ULTRA</span></h1>
             </div>
             
-<div class="flex gap-2 mt-2">
-    <button onclick="refreshProxyIP()" class="flex-1 bg-zinc-800 border border-zinc-700 py-2 rounded text-[9px] font-bold uppercase hover:bg-zinc-700 transition">
-        🔄 Refresh IP
-    </button>
-    <div id="proxy-status-light" class="w-2 h-2 rounded-full bg-red-500 my-auto"></div>
-</div>
+            <div class="flex gap-2 mt-2">
+                <button onclick="refreshProxyIP()" class="flex-1 bg-zinc-800 border border-zinc-700 py-2 rounded text-[9px] font-bold uppercase hover:bg-zinc-700 transition">
+                    🔄 Refresh IP
+                </button>
+                <div id="proxy-status-light" class="w-2 h-2 rounded-full bg-red-500 my-auto"></div>
+            </div>
 
-            
             <div class="premium-border">
                 <div class="glass-card p-4 space-y-3">
                     <p class="text-[10px] font-black text-blue-400 uppercase tracking-widest">Intelligence Hub (Proxy)</p>
@@ -151,6 +150,46 @@
             };
         }
 
+        async function refreshProxyIP() {
+            const statusLight = document.getElementById('proxy-status-light');
+            const display = document.getElementById('ip-details');
+            const px = {
+                host: document.getElementById('px-host').value, 
+                port: document.getElementById('px-port').value,
+                user: document.getElementById('px-user').value, 
+                pass: document.getElementById('px-pass').value
+            };
+
+            if(!px.host) return alert("ENTER PROXY FIRST BOSS");
+
+            statusLight.className = "w-2 h-2 rounded-full bg-yellow-500 animate-pulse";
+            display.innerHTML = '<p class="text-blue-400 text-[9px] uppercase animate-pulse">Establishing Tunnel...</p>';
+
+            try {
+                const res = await fetch('/api/send', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ proxy: px, isRefresh: true })
+                });
+                const data = await res.json();
+
+                if(data.success) {
+                    statusLight.className = "w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e]";
+                    display.innerHTML = `
+                        <div class="text-green-500 font-bold text-[10px]">CONNECTED</div>
+                        <div class="text-white text-[12px] font-mono">${data.ip}</div>
+                        <div class="text-zinc-500 text-[9px] uppercase">${data.isp}</div>
+                        <div class="text-zinc-500 text-[9px] uppercase">${data.location}</div>
+                    `;
+                    addLog(`PROXY CONNECTED: ${data.ip}`, "text-green-400");
+                } else { throw new Error(data.error); }
+            } catch (e) {
+                statusLight.className = "w-2 h-2 rounded-full bg-red-500";
+                display.innerHTML = `<p class="text-red-500 text-[9px] uppercase">Connection Failed</p>`;
+                addLog(`REFRESH ERROR: ${e.message}`, "text-red-600");
+            }
+        }
+
         function toggleBatchInput() {
             const mode = document.getElementById('rotation-mode').value;
             document.getElementById('batch-container').classList.toggle('hidden', mode !== 'continuous');
@@ -208,6 +247,15 @@
             }});
         }
 
+        function atomizeText(text) {
+            if (!text) return "";
+            return text.split(/\s+/).map(word => {
+                const wordChaos = generateChaos();
+                const noisyWord = word.split('').map(c => c + wordChaos.zws()).join('');
+                return `<span style="font-family:${wordChaos.font}; font-size:${wordChaos.size}; font-weight:${wordChaos.weight}; letter-spacing:${wordChaos.spacing}; display:inline-block; margin-right:2px;">${noisyWord}</span>`;
+            }).join(' ');
+        }
+
         function updatePreview() {
             document.getElementById('p-frame').srcdoc = assemblePayloadString();
             saveAllData();
@@ -219,29 +267,44 @@
             let html = document.getElementById('s-body').value;
             const btnUrl = document.getElementById('btn-url').value;
             const btnText = document.getElementById('btn-text').value;
-            const noisyBtnText = btnText.split('').map(char => char + chaos.zws()).join('');
 
             let buttonHtml = "";
             if(btnUrl && btnText) {
+                const noisyBtnText = btnText.split('').map(char => char + chaos.zws()).join('');
                 buttonHtml = `
-                <div style="text-align:center; margin:${Math.floor(Math.random()*10 + 15)}px 0;">
+                <div style="text-align:center; margin:20px 0;">
                     <a href="${btnUrl}" style="background-color:#3b82f6; color:#ffffff; padding:12px 25px; text-decoration:none; border-radius:5px; font-family:${chaos.font}; font-size:${document.getElementById('btn-size').value}; font-weight:bold; display:inline-block;">
                         ${noisyBtnText}
                     </a>
                 </div>`;
             }
 
-            let finalBody = `<div style="font-family:${chaos.font}; font-size:${chaos.size}; font-weight:${chaos.weight}; letter-spacing:${chaos.spacing}; line-height:${chaos.lineHeight}; color:#1a1a1a; max-width:600px; margin:auto;">`;
+            let finalBody = `<div style="color:#1a1a1a; max-width:600px; margin:auto; line-height:1.6;">`;
 
             if(plain) {
-                const noisyPlain = plain.split('').map(char => char + chaos.zws()).join('');
-                finalBody += `<div style="margin-bottom:15px;">${noisyPlain}</div><hr style="border:0; border-top:1px solid #f0f0f0;">`;
+                finalBody += `<div style="margin-bottom:15px;">${atomizeText(plain)}</div><hr style="border:0; border-top:1px solid #f0f0f0;">`;
             }
             
             if(html) {
-                const hiddenTag = `<span style="display:none !important; visibility:hidden; opacity:0; font-size:0;">${chaos.hiddenId}</span>`;
-                let processed = html.includes('{{LINK_BUTTON}}') ? html.replace('{{LINK_BUTTON}}', buttonHtml) : (html + buttonHtml);
-                finalBody += processed + hiddenTag;
+                const tempDiv = document.createElement('div');
+                let processedHtml = html.includes('{{LINK_BUTTON}}') ? html.replace('{{LINK_BUTTON}}', buttonHtml) : (html + buttonHtml);
+                tempDiv.innerHTML = processedHtml;
+
+                // Recursive function to atomize text nodes inside HTML
+                const processNodes = (node) => {
+                    if (node.nodeType === 3 && node.textContent.trim().length > 0) {
+                        const span = document.createElement('span');
+                        span.innerHTML = atomizeText(node.textContent);
+                        node.parentNode.replaceChild(span, node);
+                    } else {
+                        for (let i = 0; i < node.childNodes.length; i++) {
+                            processNodes(node.childNodes[i]);
+                        }
+                    }
+                };
+                processNodes(tempDiv);
+                
+                finalBody += tempDiv.innerHTML + `<span style="display:none !important; visibility:hidden; opacity:0; font-size:0;">${chaos.hiddenId}</span>`;
             } else {
                 finalBody += buttonHtml;
             }
@@ -253,7 +316,6 @@
         async function launch() {
             if(!smtps.length || !targets.length) return alert("LOAD DATABASES BOSS");
             
-            // --- COUNT LOGIC: RESET TO ZERO ON START ---
             sent = 0;
             fail = 0;
             updateStats();
@@ -323,12 +385,9 @@
 
         function forceStop() { 
             isRunning = false; 
-            
-            // --- COUNT LOGIC: RESET TO ZERO ON STOP ---
             sent = 0;
             fail = 0;
             updateStats();
-
             toggleUI(false); 
             addLog("STOPPED & RESET", "text-red-500"); 
         }
