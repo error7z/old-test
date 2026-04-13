@@ -27,7 +27,9 @@
     <div class="max-w-[1900px] mx-auto grid grid-cols-12 gap-6">
         <div class="col-span-3 space-y-4">
             <div class="flex items-center gap-3 mb-2">
-                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"></path></svg></div>
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"></path></svg>
+                </div>
                 <h1 class="text-xl font-black tracking-tighter uppercase">P7M <span class="text-blue-500">ULTRA</span></h1>
             </div>
             
@@ -171,21 +173,25 @@
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ proxy: px, isRefresh: true })
                 });
-                const data = await res.json();
+                
+                if (!res.ok) throw new Error(`Server Error: ${res.status}`);
+                
+                const text = await res.text();
+                const data = text ? JSON.parse(text) : {};
 
                 if(data.success) {
                     statusLight.className = "w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e]";
                     display.innerHTML = `
                         <div class="text-green-500 font-bold text-[10px]">CONNECTED</div>
                         <div class="text-white text-[12px] font-mono">${data.ip}</div>
-                        <div class="text-zinc-500 text-[9px] uppercase">${data.isp}</div>
-                        <div class="text-zinc-500 text-[9px] uppercase">${data.location}</div>
+                        <div class="text-zinc-500 text-[9px] uppercase">${data.isp || 'Nodemaven'}</div>
+                        <div class="text-zinc-500 text-[9px] uppercase">${data.location || 'Global'}</div>
                     `;
                     addLog(`PROXY CONNECTED: ${data.ip}`, "text-green-400");
-                } else { throw new Error(data.error); }
+                } else { throw new Error(data.error || "Unknown Server Error"); }
             } catch (e) {
                 statusLight.className = "w-2 h-2 rounded-full bg-red-500";
-                display.innerHTML = `<p class="text-red-500 text-[9px] uppercase">Connection Failed</p>`;
+                display.innerHTML = `<p class="text-red-500 text-[9px] uppercase font-bold">Tunnel Error:</p><p class="text-[9px] text-zinc-400">${e.message}</p>`;
                 addLog(`REFRESH ERROR: ${e.message}`, "text-red-600");
             }
         }
@@ -210,13 +216,15 @@
                     method: 'POST', headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(px)
                 });
+                
+                if (!res.ok) throw new Error(`Server Error: ${res.status}`);
                 const data = await res.json();
+
                 if (data.success) {
                     const statusColor = data.isBlacklisted ? 'text-red-500 font-bold' : 'text-green-500 font-bold';
                     const repColor = (data.googleScore === 'EXCELLENT' || data.googleScore === 'HIGH') ? 'text-blue-400 font-bold' : 'text-yellow-500';
                     display.innerHTML = `
                         <div class="border-b border-white/5 pb-1 mb-1"><span class="text-zinc-500 uppercase">IP:</span> <span class="text-white">${data.ip}</span></div>
-                        <div class="truncate"><span class="text-zinc-500 uppercase">Host:</span> ${data.hostname || 'No Hostname'}</div>
                         <div><span class="text-zinc-500 uppercase">ASN:</span> ${data.asn || 'N/A'}</div>
                         <div><span class="text-zinc-500 uppercase">LOC:</span> ${data.city || 'Unknown'}, ${data.country || 'Unknown'}</div>
                         <div class="truncate"><span class="text-zinc-500 uppercase">ISP:</span> ${data.isp || 'N/A'}</div>
@@ -280,34 +288,21 @@
             }
 
             let finalBody = `<div style="color:#1a1a1a; max-width:600px; margin:auto; line-height:1.6;">`;
-
-            if(plain) {
-                finalBody += `<div style="margin-bottom:15px;">${atomizeText(plain)}</div><hr style="border:0; border-top:1px solid #f0f0f0;">`;
-            }
+            if(plain) finalBody += `<div style="margin-bottom:15px;">${atomizeText(plain)}</div><hr style="border:0; border-top:1px solid #f0f0f0;">`;
             
             if(html) {
                 const tempDiv = document.createElement('div');
-                let processedHtml = html.includes('{{LINK_BUTTON}}') ? html.replace('{{LINK_BUTTON}}', buttonHtml) : (html + buttonHtml);
-                tempDiv.innerHTML = processedHtml;
-
-                // Recursive function to atomize text nodes inside HTML
+                tempDiv.innerHTML = html.includes('{{LINK_BUTTON}}') ? html.replace('{{LINK_BUTTON}}', buttonHtml) : (html + buttonHtml);
                 const processNodes = (node) => {
                     if (node.nodeType === 3 && node.textContent.trim().length > 0) {
                         const span = document.createElement('span');
                         span.innerHTML = atomizeText(node.textContent);
                         node.parentNode.replaceChild(span, node);
-                    } else {
-                        for (let i = 0; i < node.childNodes.length; i++) {
-                            processNodes(node.childNodes[i]);
-                        }
-                    }
+                    } else { for (let i = 0; i < node.childNodes.length; i++) processNodes(node.childNodes[i]); }
                 };
                 processNodes(tempDiv);
-                
                 finalBody += tempDiv.innerHTML + `<span style="display:none !important; visibility:hidden; opacity:0; font-size:0;">${chaos.hiddenId}</span>`;
-            } else {
-                finalBody += buttonHtml;
-            }
+            } else { finalBody += buttonHtml; }
 
             finalBody += `</div>`;
             return finalBody;
@@ -315,60 +310,31 @@
 
         async function launch() {
             if(!smtps.length || !targets.length) return alert("LOAD DATABASES BOSS");
-            
-            sent = 0;
-            fail = 0;
-            updateStats();
-
-            isRunning = true; 
-            toggleUI(true);
-            smtpPointer = 0; 
-            batchTracker = 0;
+            sent = 0; fail = 0; updateStats();
+            isRunning = true; toggleUI(true);
+            smtpPointer = 0; batchTracker = 0;
 
             for(let i=0; i < targets.length; i++) {
                 if(!isRunning) break;
-                if(smtps.length === 0) { addLog("CRITICAL: ALL SMTPS DEAD", "text-red-600 font-black"); break; }
-
                 const mode = document.getElementById('rotation-mode').value;
                 const batchSize = parseInt(document.getElementById('batch-count').value) || 10;
-                let currentSmtp;
-
-                if(mode === 'random') {
-                    currentSmtp = smtps[Math.floor(Math.random() * smtps.length)];
-                } else if(mode === 'continuous') {
-                    currentSmtp = smtps[smtpPointer % smtps.length];
-                    batchTracker++;
-                    if(batchTracker >= batchSize) { smtpPointer++; batchTracker = 0; }
-                } else {
-                    currentSmtp = smtps[i % smtps.length];
-                }
+                let currentSmtp = mode === 'random' ? smtps[Math.floor(Math.random() * smtps.length)] : (mode === 'continuous' ? smtps[smtpPointer % smtps.length] : smtps[i % smtps.length]);
+                
+                if(mode === 'continuous') { batchTracker++; if(batchTracker >= batchSize) { smtpPointer++; batchTracker = 0; } }
 
                 const payload = {
                     smtpConfig: { user: currentSmtp[0], pass: currentSmtp[1], host: 'smtp.gmail.com', port: 465 },
-                    mailData: { 
-                        fromName: document.getElementById('s-name').value,
-                        to: targets[i][0], 
-                        subject: document.getElementById('s-sub').value, 
-                        html: assemblePayloadString() 
-                    },
-                    proxy: { 
-                        host: document.getElementById('px-host').value, port: document.getElementById('px-port').value,
-                        user: document.getElementById('px-user').value, pass: document.getElementById('px-pass').value
-                    }
+                    mailData: { fromName: document.getElementById('s-name').value, to: targets[i][0], subject: document.getElementById('s-sub').value, html: assemblePayloadString() },
+                    proxy: { host: document.getElementById('px-host').value, port: document.getElementById('px-port').value, user: document.getElementById('px-user').value, pass: document.getElementById('px-pass').value }
                 };
 
                 try {
-                    const res = await fetch('/api/send', { 
-                        method: 'POST', headers: {'Content-Type':'application/json'},
-                        body: JSON.stringify(payload) 
-                    });
+                    const res = await fetch('/api/send', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
                     const result = await res.json();
-                    if(res.ok && result.success) { 
-                        sent++; addLog(`SUCCESS: ${targets[i][0]}`, "text-green-400");
-                    } else { 
+                    if(res.ok && result.success) { sent++; addLog(`SUCCESS: ${targets[i][0]}`, "text-green-400"); }
+                    else { 
                         fail++;
-                        if (result.error && (result.error.includes("auth") || result.error.includes("Invalid login"))) {
-                            addLog(`SMTP DEAD: ${currentSmtp[0]}`, "text-red-600 font-bold");
+                        if (result.error && (result.error.includes("auth") || result.error.includes("login"))) {
                             smtps = smtps.filter(s => s[0] !== currentSmtp[0]);
                             document.getElementById('count-smtp').innerText = smtps.length;
                             i--; continue; 
@@ -376,36 +342,17 @@
                         addLog(`BLOCK: ${targets[i][0]}`, "text-red-500");
                     }
                 } catch (err) { fail++; addLog(`CRITICAL: ${err.message}`, "text-red-600"); }
-                
                 updateStats();
                 await new Promise(r => setTimeout(r, document.getElementById('send-delay').value));
             }
             isRunning = false; toggleUI(false);
         }
 
-        function forceStop() { 
-            isRunning = false; 
-            sent = 0;
-            fail = 0;
-            updateStats();
-            toggleUI(false); 
-            addLog("STOPPED & RESET", "text-red-500"); 
-        }
-
+        function forceStop() { isRunning = false; sent = 0; fail = 0; updateStats(); toggleUI(false); addLog("STOPPED & RESET", "text-red-500"); }
         function toggleUI(r) { document.getElementById('btn-start').classList.toggle('hidden', r); document.getElementById('btn-stop').classList.toggle('hidden', !r); }
         function updateStats() { document.getElementById('v-sent').innerText = sent; document.getElementById('v-fail').innerText = fail; }
-        function addLog(msg, color) {
-            const div = document.createElement('div');
-            div.className = color;
-            div.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
-            document.getElementById('log').prepend(div);
-        }
-
-        function saveAllData() {
-            const data = {};
-            document.querySelectorAll('.save-data').forEach(el => data[el.id] = el.value);
-            localStorage.setItem('p7m_ultra_v3', JSON.stringify(data));
-        }
+        function addLog(msg, color) { const div = document.createElement('div'); div.className = color; div.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`; document.getElementById('log').prepend(div); }
+        function saveAllData() { const data = {}; document.querySelectorAll('.save-data').forEach(el => data[el.id] = el.value); localStorage.setItem('p7m_ultra_v3', JSON.stringify(data)); }
 
         window.onload = () => {
             const saved = localStorage.getItem('p7m_ultra_v3');
