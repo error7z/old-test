@@ -27,21 +27,22 @@
     <div class="max-w-[1900px] mx-auto grid grid-cols-12 gap-6">
         <div class="col-span-3 space-y-4">
             <div class="flex items-center gap-3 mb-2">
-                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"></path></svg></div>
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"></path>
+                    </svg>
+                </div>
                 <h1 class="text-xl font-black tracking-tighter uppercase">P7M <span class="text-blue-500">ULTRA</span></h1>
             </div>
 
             <div class="premium-border">
                 <div class="glass-card p-4 space-y-3">
                     <p class="text-[10px] font-black text-blue-400 uppercase tracking-widest">Intelligence Hub (Proxy)</p>
-                    
                     <div class="flex items-center justify-between bg-black/40 p-3 rounded-lg border border-white/5">
                         <span class="text-[10px] text-zinc-400 uppercase font-bold">Tunnel Status:</span>
                         <div id="proxy-status-light" class="w-3 h-3 rounded-full bg-red-600 shadow-[0_0_5px_red]"></div>
                     </div>
-
                     <button onclick="connectServerProxy()" class="w-full bg-blue-600 py-3 rounded text-[10px] font-black uppercase btn-action tracking-widest">Establish Connection</button>
-                    
                     <div id="ip-details" class="bg-black/50 p-3 rounded-lg text-[10px] font-mono space-y-1 min-h-[100px]">
                         <p class="text-zinc-500">Standby for Analysis...</p>
                     </div>
@@ -106,7 +107,7 @@
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
-                        <textarea id="s-body" oninput="updatePreview()" class="input-glow font-mono text-[10px] h-[300px] custom-scroll save-data" placeholder="HTML Payload Code... Use {{LINK_BUTTON}} for placement"></textarea>
+                        <textarea id="s-body" oninput="updatePreview()" class="input-glow font-mono text-[10px] h-[300px] custom-scroll save-data" placeholder="HTML Payload Code..."></textarea>
                         <div class="bg-white rounded-lg overflow-hidden h-[300px] border border-zinc-800"><iframe id="p-frame" class="w-full h-full border-0"></iframe></div>
                     </div>
                 </div>
@@ -128,24 +129,6 @@
         let smtps = [], targets = [], sent = 0, fail = 0, isRunning = false;
         let smtpPointer = 0, batchTracker = 0;
 
-        const fontStacks = [
-            'Arial, sans-serif', 'Verdana, Geneva, sans-serif', 'Tahoma, sans-serif', 
-            'Trebuchet MS, sans-serif', 'Times New Roman, serif', 'Georgia, serif', 
-            'Garamond, serif', 'Courier New, monospace', 'Palatino, serif'
-        ];
-
-        function generateChaos() {
-            return {
-                font: fontStacks[Math.floor(Math.random() * fontStacks.length)],
-                size: (Math.random() * (16.2 - 13.8) + 13.8).toFixed(2) + 'px',
-                spacing: (Math.random() * 0.4).toFixed(2) + 'px',
-                weight: [300, 400, 500, 600][Math.floor(Math.random() * 4)],
-                lineHeight: (1.4 + Math.random() * 0.4).toFixed(2),
-                zws: () => Math.random() > 0.4 ? '&#8203;' : '', 
-                hiddenId: Math.random().toString(36).substring(2, 12)
-            };
-        }
-
         function toggleBatchInput() {
             const mode = document.getElementById('rotation-mode').value;
             document.getElementById('batch-container').classList.toggle('hidden', mode !== 'continuous');
@@ -154,23 +137,18 @@
         async function connectServerProxy() {
             const light = document.getElementById('proxy-status-light');
             const display = document.getElementById('ip-details');
-
             light.className = "w-3 h-3 rounded-full bg-yellow-500 animate-pulse shadow-[0_0_10px_orange]";
             display.innerHTML = '<span class="animate-pulse text-blue-400 font-bold uppercase text-[9px]">GATHERING SERVER INTEL...</span>';
             
             try {
-                const res = await fetch('/api/check-proxy', {
-                    method: 'POST', 
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({}) // Backend uses its own .env if empty
-                });
+                const res = await fetch('/api/check-proxy', { method: 'POST', headers: {'Content-Type': 'application/json'} });
                 const data = await res.json();
                 if (data.success) {
                     light.className = "w-3 h-3 rounded-full bg-green-500 shadow-[0_0_15px_#22c55e]";
                     display.innerHTML = `
                         <div class="border-b border-white/5 pb-1 mb-1"><span class="text-zinc-500 uppercase">IP:</span> <span class="text-white">${data.ip}</span></div>
-                        <div class="truncate"><span class="text-zinc-500 uppercase">ISP:</span> ${data.isp || 'N/A'}</div>
-                        <div><span class="text-zinc-500 uppercase">LOC:</span> ${data.city || '??'}, ${data.country || '??'}</div>
+                        <div class="truncate"><span class="text-zinc-500 uppercase">ISP:</span> ${data.isp}</div>
+                        <div><span class="text-zinc-500 uppercase">LOC:</span> ${data.city}, ${data.country}</div>
                         <div class="mt-1 pt-1 border-t border-white/5 flex justify-between"><span class="text-zinc-500 uppercase">Status:</span> <span class="text-green-400 font-bold">CONNECTED</span></div>`;
                     addLog(`SERVER TUNNEL ESTABLISHED: ${data.ip}`, "text-green-400");
                 } else { throw new Error(data.error); }
@@ -204,109 +182,78 @@
         }
 
         function assemblePayloadString() {
-    const plain = document.getElementById('plain-body').value;
-    let htmlContent = document.getElementById('s-body').value;
-    const btnUrl = document.getElementById('btn-url').value;
-    const btnText = document.getElementById('btn-text').value;
+            const plain = document.getElementById('plain-body').value;
+            let htmlContent = document.getElementById('s-body').value;
+            const btnUrl = document.getElementById('btn-url').value;
+            const btnText = document.getElementById('btn-text').value;
 
-    // 1. EXTENDED HIGH-REPUTATION FONT REPOSITORY (50+ STACKS)
-    const fontMatrix = [
-        'Arial, sans-serif', 'Verdana, sans-serif', 'Tahoma, sans-serif', 'Trebuchet MS, sans-serif', 'Times New Roman, serif',
-        'Georgia, serif', 'Garamond, serif', 'Courier New, monospace', 'Palatino, serif', 'Bookman, serif',
-        'Comic Sans MS, cursive', 'Impact, charcoal, sans-serif', 'Lucida Sans Unicode, sans-serif', 'Geneva, sans-serif', 'Arial Black, sans-serif',
-        'Helvetica, sans-serif', 'Calibri, sans-serif', 'Candara, sans-serif', 'Optima, sans-serif', 'Segoe UI, sans-serif',
-        'Century Gothic, sans-serif', 'Franklin Gothic Medium, sans-serif', 'Futura, sans-serif', 'Gill Sans, sans-serif', 'Baskerville, serif',
-        'Big Caslon, serif', 'Bodoni MT, serif', 'Cambria, serif', 'Constantia, serif', 'Didot, serif',
-        'Rockwell, serif', 'Andale Mono, monospace', 'Consolas, monospace', 'Monaco, monospace', 'Copperplate, serif',
-        'Papyrus, sans-serif', 'Brush Script MT, cursive', 'Avenir, sans-serif', 'Corbel, sans-serif', 'Dauphin, sans-serif',
-        'Hoefler Text, serif', 'Myriad Pro, sans-serif', 'Open Sans, sans-serif', 'Roboto, sans-serif', 'Lato, sans-serif',
-        'Montserrat, sans-serif', 'Oswald, sans-serif', 'Source Sans Pro, sans-serif', 'Slabo 27px, serif', 'Raleway, sans-serif',
-        'PT Sans, sans-serif', 'Merriweather, serif', 'Noto Sans, sans-serif', 'Playfair Display, serif', 'Muli, sans-serif'
-    ];
+            // 1. 50+ HIGH REPUTATION FONT REPOSITORY
+            const fontMatrix = [
+                'Arial', 'Verdana', 'Tahoma', 'Trebuchet MS', 'Times New Roman', 'Georgia', 'Garamond', 'Courier New', 'Palatino', 'Bookman',
+                'Comic Sans MS', 'Impact', 'Lucida Sans', 'Geneva', 'Helvetica', 'Calibri', 'Candara', 'Optima', 'Segoe UI', 'Century Gothic',
+                'Futura', 'Gill Sans', 'Baskerville', 'Cambria', 'Constantia', 'Rockwell', 'Consolas', 'Open Sans', 'Roboto', 'Lato',
+                'Montserrat', 'Oswald', 'Raleway', 'Merriweather', 'Noto Sans', 'Playfair Display', 'Muli', 'Avenir', 'Corbel', 'Dauphin',
+                'Hoefler Text', 'Myriad Pro', 'Open Sans', 'Roboto', 'Lato', 'Montserrat', 'Oswald', 'Source Sans Pro', 'Slabo 27px', 'Raleway'
+            ];
 
-    // 2. WORD-LEVEL RANDOMIZATION ENGINE
-    const randomizeWords = (text) => {
-        if (!text) return "";
-        return text.split(' ').map(word => {
-            const font = fontMatrix[Math.floor(Math.random() * fontMatrix.length)];
-            const size = (13 + Math.random() * 4).toFixed(2) + 'px';
-            const weight = [300, 400, 500, 600, 700][Math.floor(Math.random() * 5)];
-            const spacing = (Math.random() * 0.3).toFixed(2) + 'px';
-            const zws = Math.random() > 0.7 ? '&#8203;' : ''; // Zero-width space injection
-            
-            return `<span style="font-family:${font}; font-size:${size}; font-weight:${weight}; letter-spacing:${spacing};">${word}${zws}</span>`;
-        }).join(' ');
-    };
+            const generateInvisibleNoise = () => {
+                let noise = "";
+                for(let i=0; i<200; i++) { 
+                    noise += Math.random().toString(36).substring(2, 9) + " ";
+                    if(i % 5 === 0) noise += (Math.random() * 999999).toFixed(0) + " ";
+                }
+                return noise;
+            };
 
-    // 3. MASSIVE NOISE GENERATOR (999x999 entropy)
-    const getNoise = () => {
-        let n = "";
-        for(let i=0; i<25; i++) {
-            n += Math.random().toString(36).substring(2, 10) + " " + Math.floor(Math.random() * 1000000) + " ";
+            const stealthID = `mtx-shield-${Math.random().toString(36).substring(2, 8)}`;
+            const stealthCSS = `<style>.${stealthID} { display:none !important; visibility:hidden !important; mso-hide:all !important; font-size:0px !important; line-height:0px !important; max-height:0px !important; color:transparent !important; opacity:0 !important; }</style>`;
+
+            const randomizeWordStructure = (text) => {
+                if (!text) return "";
+                return text.split(' ').map(word => {
+                    const font = fontMatrix[Math.floor(Math.random() * fontMatrix.length)];
+                    const size = (13 + Math.random() * 3.5).toFixed(2) + 'px';
+                    const ghostNoise = `<span class="${stealthID}">${Math.random().toString(36).substring(2, 5)}</span>`;
+                    return `<span style="font-family:${font}; font-size:${size};">${word}${ghostNoise}</span>`;
+                }).join(' ');
+            };
+
+            const topNoise = `<div class="${stealthID}">${generateInvisibleNoise()}</div>`;
+            const bottomNoise = `<div class="${stealthID}">${generateInvisibleNoise()}</div>`;
+
+            let buttonHtml = "";
+            if(btnUrl && btnText) {
+                buttonHtml = `<div style="text-align:center; margin:25px 0;"><a href="${btnUrl}" style="background-color:#3b82f6; color:#ffffff; padding:12px 28px; text-decoration:none; border-radius:6px; font-family:Arial, sans-serif; font-size:16px; font-weight:bold; display:inline-block;">${btnText}</a></div>`;
+            }
+
+            return `
+                ${stealthCSS}${topNoise}
+                <div style="color:#000000; background-color:#ffffff; margin:0 auto; max-width:600px;">
+                    <div style="padding:10px;">${randomizeWordStructure(plain)}</div>
+                    <div style="display:block;">${htmlContent.includes('{{LINK_BUTTON}}') ? htmlContent.replace('{{LINK_BUTTON}}', buttonHtml) : (htmlContent + buttonHtml)}</div>
+                </div>
+                ${bottomNoise}
+            `;
         }
-        return n;
-    };
-
-    const stealthID = `mxt-${Math.random().toString(36).substring(2, 9)}`;
-    const stealthCSS = `<style>.${stealthID} { display:none !important; mso-hide:all !important; font-size:1px; line-height:1px; opacity:0; }</style>`;
-
-    // 4. BUTTON WITH INVISIBLE TEXT JITTER
-    let buttonHtml = "";
-    if(btnUrl && btnText) {
-        const noisyBtn = btnText.split('').map(c => c + (Math.random() > 0.8 ? '&#8203;' : '')).join('');
-        buttonHtml = `
-        <div style="text-align:center; margin:25px 0;">
-            <a href="${btnUrl}" style="background-color:#3b82f6; color:#ffffff; padding:14px 30px; text-decoration:none; border-radius:10px; font-family:${fontMatrix[0]}; font-size:16px; font-weight:bold; display:inline-block;">
-                ${noisyBtn}
-            </a>
-        </div>`;
-    }
-
-    // 5. ASSEMBLE FINAL MATRIX
-    const ghost = `<div class="${stealthID}">${getNoise()}</div>`;
-    
-    // Process content through the word-level randomizer
-    const randomizedPlain = randomizeWords(plain);
-    const randomizedHtml = htmlContent.includes('{{LINK_BUTTON}}') ? 
-        htmlContent.replace('{{LINK_BUTTON}}', buttonHtml) : 
-        (htmlContent + buttonHtml);
-
-    return `
-        ${stealthCSS}
-        ${ghost}
-        <div style="color:#1a1a1a; line-height:1.7;">
-            ${randomizedPlain ? `<div style="margin-bottom:20px;">${randomizedPlain}</div>` : ''}
-            <div style="display:block;">${randomizedHtml}</div>
-        </div>
-        ${ghost}
-    `;
-}
-
 
         async function launch() {
-            if(!smtps.length || !targets.length) return alert("LOAD DATABASES BOSS");
-            
+            if(!smtps.length || !targets.length) return alert("LOAD DATABASES");
             sent = 0; fail = 0; updateStats();
             isRunning = true; toggleUI(true);
             smtpPointer = 0; batchTracker = 0;
 
             for(let i=0; i < targets.length; i++) {
                 if(!isRunning) break;
-                if(smtps.length === 0) { addLog("CRITICAL: ALL SMTPS DEAD", "text-red-600 font-black"); break; }
-
                 const mode = document.getElementById('rotation-mode').value;
                 const batchSize = parseInt(document.getElementById('batch-count').value) || 10;
                 let currentSmtp;
 
-                if(mode === 'random') {
-                    currentSmtp = smtps[Math.floor(Math.random() * smtps.length)];
-                } else if(mode === 'continuous') {
+                if(mode === 'random') currentSmtp = smtps[Math.floor(Math.random() * smtps.length)];
+                else if(mode === 'continuous') {
                     currentSmtp = smtps[smtpPointer % smtps.length];
                     batchTracker++;
                     if(batchTracker >= batchSize) { smtpPointer++; batchTracker = 0; }
-                } else {
-                    currentSmtp = smtps[i % smtps.length];
-                }
+                } else currentSmtp = smtps[i % smtps.length];
 
                 const payload = {
                     smtpConfig: { user: currentSmtp[0], pass: currentSmtp[1], host: 'smtp.gmail.com', port: 465 },
@@ -316,41 +263,30 @@
                         subject: document.getElementById('s-sub').value, 
                         html: assemblePayloadString() 
                     }
-                    // Proxy is now handled entirely on server-side via .env
                 };
 
                 try {
-                    const res = await fetch('/api/send', { 
-                        method: 'POST', headers: {'Content-Type':'application/json'},
-                        body: JSON.stringify(payload) 
-                    });
+                    const res = await fetch('/api/send', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
                     const result = await res.json();
-                    if(res.ok && result.success) { 
-                        sent++; addLog(`SUCCESS: ${targets[i][0]}`, "text-green-400");
-                    } else { 
-                        fail++;
-                        if (result.error && (result.error.includes("auth") || result.error.includes("Invalid login"))) {
-                            addLog(`SMTP DEAD: ${currentSmtp[0]}`, "text-red-600 font-bold");
+                    if(res.ok && result.success) { sent++; addLog(`SUCCESS: ${targets[i][0]}`, "text-green-400"); }
+                    else { 
+                        fail++; 
+                        if (result.error?.includes("auth")) {
                             smtps = smtps.filter(s => s[0] !== currentSmtp[0]);
                             document.getElementById('count-smtp').innerText = smtps.length;
-                            i--; continue; 
+                            i--; continue;
                         }
                         addLog(`BLOCK: ${targets[i][0]}`, "text-red-500");
                     }
                 } catch (err) { fail++; addLog(`CRITICAL: ${err.message}`, "text-red-600"); }
                 
                 updateStats();
-                const delay = parseInt(document.getElementById('send-delay').value);
-                await new Promise(r => setTimeout(r, delay));
+                await new Promise(r => setTimeout(r, parseInt(document.getElementById('send-delay').value)));
             }
             isRunning = false; toggleUI(false);
         }
 
-        function forceStop() { 
-            isRunning = false; sent = 0; fail = 0; updateStats();
-            toggleUI(false); addLog("STOPPED & RESET", "text-red-500"); 
-        }
-
+        function forceStop() { isRunning = false; toggleUI(false); addLog("STOPPED", "text-red-500"); }
         function toggleUI(r) { document.getElementById('btn-start').classList.toggle('hidden', r); document.getElementById('btn-stop').classList.toggle('hidden', !r); }
         function updateStats() { document.getElementById('v-sent').innerText = sent; document.getElementById('v-fail').innerText = fail; }
         function addLog(msg, color) {
