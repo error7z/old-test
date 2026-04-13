@@ -153,17 +153,57 @@
         }
 
         async function checkRealIPReputation() {
-            const display = document.getElementById('ip-details');
-            const px = { host: document.getElementById('px-host').value, port: document.getElementById('px-port').value, user: document.getElementById('px-user').value, pass: document.getElementById('px-pass').value };
-            display.innerHTML = '<span class="animate-pulse text-blue-400 text-[9px]">SCANNING...</span>';
-            try {
-                const res = await fetch('/api/check-proxy', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(px) });
-                const data = await res.json();
-                if (data.success) {
-                    display.innerHTML = `<div>IP: ${data.ip}</div><div>ISP: ${data.isp}</div><div>REP: ${data.googleScore}</div>`;
-                } else { throw new Error(data.error); }
-            } catch (e) { display.innerHTML = `<span class="text-red-500">${e.message}</span>`; }
+    const statusLight = document.getElementById('proxy-status-light');
+    const display = document.getElementById('ip-details');
+    const px = { 
+        host: document.getElementById('px-host').value, 
+        port: document.getElementById('px-port').value, 
+        user: document.getElementById('px-user').value, 
+        pass: document.getElementById('px-pass').value 
+    };
+
+    if(!px.host || !px.user) return alert("BOSS, FILL PROXY DATA FIRST");
+
+    // Start UI Animation
+    statusLight.className = "w-2 h-2 rounded-full bg-yellow-500 animate-pulse";
+    display.innerHTML = '<span class="animate-pulse text-blue-400 text-[9px] uppercase font-bold">Establishing Secure Tunnel...</span>';
+
+    try {
+        // Step 1: Check Reputation & Details
+        const res = await fetch('/api/check-proxy', { 
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'}, 
+            body: JSON.stringify(px) 
+        });
+        
+        const data = await res.json();
+
+        if (data.success) {
+            // Step 2: Update UI with Results
+            const statusColor = data.isBlacklisted ? 'text-red-500' : 'text-green-500';
+            display.innerHTML = `
+                <div class="border-b border-white/5 pb-1 mb-1"><span class="text-zinc-500 uppercase">IP:</span> <span class="text-white">${data.ip}</span></div>
+                <div class="truncate"><span class="text-zinc-500 uppercase">ISP:</span> ${data.isp}</div>
+                <div class="flex justify-between"><span class="text-zinc-500 uppercase">Reputation:</span> <span class="text-blue-400 font-bold">${data.googleScore || 'CLEAN'}</span></div>
+                <div class="flex justify-between"><span class="text-zinc-500 uppercase">Status:</span> <span class="${statusColor} font-bold">${data.blacklistStatus || 'ACTIVE'}</span></div>
+            `;
+
+            // Step 3: Automatically "Connect" the status light
+            statusLight.className = "w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e]";
+            addLog(`TUNNEL ACTIVE: ${data.ip}`, "text-green-400");
+            
+            // Save data for the session
+            saveAllData();
+        } else { 
+            throw new Error(data.error || "Connection Refused"); 
         }
+    } catch (e) {
+        statusLight.className = "w-2 h-2 rounded-full bg-red-600";
+        display.innerHTML = `<p class="text-red-500 text-[9px] font-bold uppercase underline">Tunnel Failed</p><p class="text-[8px] text-zinc-400">${e.message}</p>`;
+        addLog(`CONNECTION ERROR: ${e.message}`, "text-red-600");
+    }
+}
+
 
         function handleCSV(e, type) {
             Papa.parse(e.target.files[0], { skipEmptyLines: true, complete: r => {
